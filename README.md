@@ -8,10 +8,17 @@
 2. **志愿服务活动时长申报表** (Word) - 活动基本信息、子活动汇总、审核意见
 3. **志愿服务活动总结** (Word) - 使用方正仿宋字体的活动总结文档
 
+## ✨ AI 智能生成
+
+支持接入大语言模型（LLM），根据活动名称自动生成个性化的活动内容：
+- **默认支持**：智谱AI GLM-4-Flash（完全免费）
+- **可选支持**：DeepSeek、通义千问、月之暗面 Kimi、小米 MIMO、火山引擎 Doubao
+- **智能降级**：AI 调用失败时自动使用静态模板
+
 ## 环境要求
 
 - Python 3.8+
-- 依赖包：python-docx, openpyxl
+- 依赖包：python-docx, openpyxl, openai, pyyaml
 
 ## 安装依赖
 
@@ -21,25 +28,39 @@ pip install -r requirements.txt
 
 ## 使用方法
 
-### 1. 运行脚本
+### 1. 配置 AI（可选）
+
+如需使用 AI 生成内容，请编辑 `config.yaml` 文件，填入 API Key：
+
+```yaml
+llm:
+  enabled: true
+  provider: zhipu  # 默认使用智谱AI
+  zhipu:
+    api_key: "你的API Key"  # 从 https://open.bigmodel.cn 获取
+```
+
+### 2. 运行脚本
 
 ```bash
 python generate_materials.py
 ```
 
-### 2. 按提示输入信息
+### 3. 按提示输入信息
 
 脚本会要求输入以下信息：
 - **选择xlsx文件**：输入编号或直接输入文件路径
 - **活动名称**：如"雷锋月志愿活动"
+- **受益人类型**：如"校园内学生"
 - **输出目录**：留空使用默认目录（脚本目录下的output文件夹）
+- **选择AI提供商**：如已配置API Key，可选择使用AI生成内容
 
-### 3. 自动生成
+### 4. 自动生成
 
 脚本会自动：
 - 读取xlsx数据源
 - 计算活动实施时间（从最早日期到最晚日期）
-- 识别活动类型并生成相应内容
+- 识别活动类型并生成相应内容（AI或静态模板）
 - 生成三份材料并自动打开输出目录
 
 ---
@@ -152,11 +173,12 @@ python generate_materials.py
 ### 活动内容自动生成
 
 根据识别的活动类型，自动生成以下内容：
+- 内容概述
 - 社会问题
 - 产生原因
-- 必要性（包含7个"有利于"）
-- 服务对象
-- 预计成效
+- 必要性（包含7个"有利于"排比句）
+- 服务对象（用户输入）
+- 预计成效（系统自动填写）
 
 ### 活动时间自动计算
 
@@ -166,18 +188,31 @@ python generate_materials.py
 
 ---
 
+## AI 提供商配置
+
+在 `config.yaml` 中配置 API Key：
+
+| 提供商 | 获取地址 | 说明 |
+|--------|----------|------|
+| 智谱AI | https://open.bigmodel.cn | 免费，推荐 |
+| DeepSeek | https://platform.deepseek.com | 付费，价格低 |
+| 通义千问 | https://dashscope.aliyuncs.com | 付费 |
+| 月之暗面 Kimi | https://platform.moonshot.cn | 付费 |
+| 小米 MIMO | https://token-plan-cn.xiaomimimo.com | 付费 |
+| 火山引擎 Doubao | https://console.volcengine.com | 付费 |
+
+---
+
 ## 文件说明
 
 | 文件 | 说明 |
 |------|------|
 | `generate_materials.py` | 主脚本 |
+| `llm_generator.py` | LLM 调用模块 |
+| `config.yaml` | AI 配置文件 |
 | `requirements.txt` | Python依赖包 |
-| `志愿活动活动总结模板.docx` | 活动总结模板 |
-| `志愿活动申报表模板.docx` | 申报表模板 |
-| `志愿者名单模板.docx` | 志愿者名单模板 |
-| `志愿活动申报结办流程.docx` | 申报流程说明 |
-| `重庆交通大学志愿服务类型及说明.docx` | 服务类型说明 |
-| `output/` | 生成文件输出目录 |
+| `示例：*.xlsx` | 示例输入文件 |
+| `示例：*.docx` | 示例输出文件 |
 
 ## 注意事项
 
@@ -187,3 +222,4 @@ python generate_materials.py
 4. 活动内容（社会问题、产生原因等）会根据活动名称自动生成
 5. 生成完成后会自动打开输出目录
 6. 如果文件被占用（如Word未关闭），请先关闭文件再重新生成
+7. AI 生成失败时会自动使用静态模板，不影响正常使用

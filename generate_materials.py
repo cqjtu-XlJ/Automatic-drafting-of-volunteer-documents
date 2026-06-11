@@ -20,6 +20,13 @@ from docx.enum.section import WD_ORIENT
 from docx.oxml.ns import qn, nsdecls
 from docx.oxml import parse_xml
 
+# 导入 LLM 模块
+try:
+    from llm_generator import generate_activity_content_with_llm, get_available_providers, LLMGenerator
+    LLM_AVAILABLE = True
+except ImportError:
+    LLM_AVAILABLE = False
+
 
 # ==================== 配置 ====================
 
@@ -693,9 +700,10 @@ def generate_declaration_form(activity_data, activity_name, output_path,
         # 使用混合格式，标签加粗
         overview_lines = generate_activity_overview_lines(
             activity_name,
-            activity_background or '校园内',
-            activity_significance or '弘扬志愿服务精神，为同学们提供志愿服务',
-            activity_results or '活动圆满结束'
+            activity_background,
+            activity_significance,
+            activity_results,
+            beneficiary_type
         )
         set_cell_mixed_text(cell_value, overview_lines, font_name='宋体', font_size=FONT_SIZE)
 
@@ -825,21 +833,29 @@ def generate_activity_overview(activity_name, background, significance, results)
     return overview
 
 
-def generate_activity_overview_lines(activity_name, background, significance, results):
+def generate_activity_overview_lines(activity_name, background, significance, results, beneficiary=None):
     """生成活动概述内容（返回带加粗标记的行列表）"""
+    # 使用传入的参数，如果没有则使用默认值
+    content_overview = f"协助开展{activity_name}活动的工作，确保{activity_name}顺利完成。"
+    social_problem = background if background else "当前校园内学生课余生活相对单一，部分同学面临学业压力和心理压力，缺乏有效的放松和调节途径。同时，校园内部分公共区域需要维护和整理，老年群体也需要更多的关怀和陪伴。"
+    cause = "学生学业负担较重，课余时间有限，缺乏组织化的志愿服务活动来引导同学们参与社会实践。校园公共区域维护需求增加，而学校后勤人员有限，无法全面覆盖。"
+    necessity = significance if significance else f"开展{activity_name}活动有利于增强同学们的社会责任感和奉献精神；有利于缓解同学们的学业压力，丰富课余生活；有利于改善校园环境，提升校园文明程度；有利于弘扬中华民族尊老爱幼的传统美德；有利于培养同学们的团队协作能力和组织能力；有利于促进校园文化建设，营造积极向上的校园氛围；有利于推动志愿服务事业的发展，传递正能量。"
+    service_target = beneficiary if beneficiary else "同活动信息中的受益人。"
+    expected_result = results if results else f"重庆交通大学信息学院{activity_name}活动圆满结束。"
+
     lines = [
         ("内容概述", True),
-        ("协助开展" + activity_name + "活动的工作，确保" + activity_name + "顺利完成。", False),
+        (content_overview, False),
         ("社会问题", True),
-        ("当前校园内学生课余生活相对单一，部分同学面临学业压力和心理压力，缺乏有效的放松和调节途径。同时，校园内部分公共区域需要维护和整理，老年群体也需要更多的关怀和陪伴。这些问题需要通过志愿服务活动来缓解和改善。", False),
+        (social_problem, False),
         ("产生原因", True),
-        ("学生学业负担较重，课余时间有限，缺乏组织化的志愿服务活动来引导同学们参与社会实践。校园公共区域维护需求增加，而学校后勤人员有限，无法全面覆盖。老年群体因身体原因需要更多的陪伴和帮助，但社会资源分配不均导致服务供给不足。", False),
+        (cause, False),
         ("必要性", True),
-        ("开展" + activity_name + "活动有利于增强同学们的社会责任感和奉献精神；有利于缓解同学们的学业压力，丰富课余生活；有利于改善校园环境，提升校园文明程度；有利于弘扬中华民族尊老爱幼的传统美德；有利于培养同学们的团队协作能力和组织能力；有利于促进校园文化建设，营造积极向上的校园氛围；有利于推动志愿服务事业的发展，传递正能量。", False),
+        (necessity, False),
         ("服务对象", True),
-        ("同活动信息中的受益人。", False),
+        (service_target, False),
         ("预计成效", True),
-        ("重庆交通大学信息学院" + activity_name + "活动圆满结束。", False),
+        (expected_result, False),
     ]
     return lines
 
@@ -1094,6 +1110,11 @@ def get_user_input():
         activity_name = '志愿活动'
         print(f"使用默认名称: {activity_name}")
 
+    # 获取受益人类型
+    beneficiary_type = input("请输入受益人类型（如：校园内学生，留空使用默认值）: ").strip()
+    if not beneficiary_type:
+        beneficiary_type = '重庆交通大学全体在校学生、活动对接的老年群体'
+
     # 获取输出目录
     script_dir = os.path.dirname(os.path.abspath(__file__))
     default_output_dir = os.path.join(script_dir, 'output')
@@ -1111,10 +1132,57 @@ def get_user_input():
     else:
         output_dir = default_output_dir
 
+    # LLM 选择
+    use_llm = False
+    llm_provider = None
+
+    if LLM_AVAILABLE:
+        available_providers = get_available_providers()
+        if available_providers:
+            print("\n" + "-"*40)
+            print("检测到可用的 AI 提供商：")
+            provider_names = {
+                'zhipu': '智谱AI (GLM-4-Flash, 免费)',
+                'deepseek': 'DeepSeek (付费)',
+                'qwen': '通义千问 (付费)',
+                'moonshot': '月之暗面 Kimi (付费)',
+                'mimo': '小米 MIMO (付费)',
+                'doubao': '火山引擎 Doubao (付费)'
+            }
+            for i, p in enumerate(available_providers, 1):
+                print(f"  {i}. {provider_names.get(p, p)}")
+            print(f"  {len(available_providers) + 1}. 不使用 AI（使用静态模板）")
+
+            while True:
+                try:
+                    llm_choice = input("\n请选择 AI 提供商（输入编号）: ").strip()
+                    llm_choice_num = int(llm_choice)
+                    if 1 <= llm_choice_num <= len(available_providers):
+                        use_llm = True
+                        llm_provider = available_providers[llm_choice_num - 1]
+                        print(f"已选择: {provider_names.get(llm_provider, llm_provider)}")
+                        break
+                    elif llm_choice_num == len(available_providers) + 1:
+                        use_llm = False
+                        print("将使用静态模板生成内容")
+                        break
+                    else:
+                        print("无效的选择，请重新输入")
+                except ValueError:
+                    print("请输入有效的数字")
+        else:
+            print("\n未检测到可用的 AI 提供商，将使用静态模板生成内容")
+            print("如需使用 AI 生成，请在 config.yaml 中配置 API Key")
+    else:
+        print("\nLLM 模块未安装，将使用静态模板生成内容")
+
     return {
         'xlsx_path': xlsx_path,
         'activity_name': activity_name,
         'output_dir': output_dir,
+        'use_llm': use_llm,
+        'llm_provider': llm_provider,
+        'beneficiary_type': beneficiary_type,
     }
 
 
@@ -1137,10 +1205,31 @@ def main():
     # 智能生成活动内容
     activity_name = config['activity_name']
     activity_type = analyze_activity_type(activity_name)
-    content = generate_activity_content(activity_name, activity_type)
 
-    print(f"\n活动类型识别: {activity_type}")
-    print("已自动生成活动内容（社会问题、产生原因、必要性等）")
+    # 尝试使用 LLM 生成内容
+    content = None
+    if config.get('use_llm', False) and LLM_AVAILABLE:
+        print(f"\n正在使用 AI 生成活动内容...")
+        # 获取服务内容列表
+        service_contents = ', '.join(activity_data.service_types)
+        content = generate_activity_content_with_llm(
+            activity_name,
+            activity_type,
+            activity_data.get_total_volunteers(),
+            total_hours,
+            service_contents,
+            provider=config.get('llm_provider')
+        )
+        if content:
+            print("✓ AI 内容生成成功")
+        else:
+            print("✗ AI 生成失败，将使用静态模板")
+
+    # 如果 LLM 未启用或失败，使用静态模板
+    if not content:
+        content = generate_activity_content(activity_name, activity_type)
+        print(f"\n活动类型识别: {activity_type}")
+        print("已使用静态模板生成活动内容")
 
     # 使用用户指定的输出目录
     output_dir = config['output_dir']
@@ -1172,8 +1261,8 @@ def main():
         activity_period=activity_period,
         activity_background=content['social_problem'],
         activity_significance=content['necessity'],
-        activity_results=content['result'],
-        beneficiary_type=content['beneficiary'],
+        activity_results=f"重庆交通大学{activity_name}活动圆满结束。",
+        beneficiary_type=config['beneficiary_type'],
     )
 
     # 3. 生成志愿服务活动总结
