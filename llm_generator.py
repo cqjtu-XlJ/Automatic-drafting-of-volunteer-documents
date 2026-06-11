@@ -41,9 +41,10 @@ def get_provider_config(config, provider=None):
 class LLMGenerator:
     """LLM 内容生成器"""
 
-    def __init__(self, provider=None):
+    def __init__(self, provider=None, api_key=None):
         self.config = load_config()
         self.provider = provider
+        self.api_key = api_key
         self.client = None
         self.provider_config = None
         self._init_client()
@@ -56,7 +57,8 @@ class LLMGenerator:
 
         self.provider_config, self.provider = get_provider_config(self.config, self.provider)
 
-        api_key = self.provider_config.get('api_key', '')
+        # 优先使用传入的 API Key，否则从配置文件读取
+        api_key = self.api_key or self.provider_config.get('api_key', '')
         if not api_key:
             logger.warning(f"未配置 {self.provider} 的 API Key")
             return
@@ -215,10 +217,10 @@ def parse_llm_response(response_text):
     return sections
 
 
-def generate_activity_content_with_llm(activity_name, activity_type, volunteer_count, total_hours, service_contents, provider=None):
+def generate_activity_content_with_llm(activity_name, activity_type, volunteer_count, total_hours, service_contents, provider=None, api_key=None):
     """使用 LLM 生成活动内容（带降级处理）"""
     try:
-        generator = LLMGenerator(provider=provider)
+        generator = LLMGenerator(provider=provider, api_key=api_key)
 
         if not generator.is_available():
             logger.warning("LLM 不可用，将使用静态模板")
@@ -262,7 +264,7 @@ def generate_activity_content_with_llm(activity_name, activity_type, volunteer_c
 
 # 便捷函数：获取可用的 AI 提供商列表
 def get_available_providers():
-    """获取可用的 AI 提供商列表"""
+    """获取可用的 AI 提供商列表（返回配置文件中所有已配置的提供商）"""
     config = load_config()
     if not config:
         return []
@@ -272,7 +274,8 @@ def get_available_providers():
 
     for provider in ['zhipu', 'deepseek', 'qwen', 'moonshot', 'mimo', 'doubao']:
         provider_config = llm_config.get(provider, {})
-        if provider_config.get('api_key'):
+        # 只要提供商配置存在（有 base_url），就认为可用
+        if provider_config.get('base_url'):
             providers.append(provider)
 
     return providers

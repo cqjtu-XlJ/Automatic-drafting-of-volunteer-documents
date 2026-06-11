@@ -1,24 +1,22 @@
 # LLM 配置文件
-# 请在下方填入你的 API Key
+# 注意：API Key 不要存储在此文件中，请通过前端界面输入
 
 llm:
   # 是否启用 LLM 生成内容（true/false）
   enabled: true
 
-  # AI 提供商选择：zhipu / deepseek / qwen / moonshot / doubao
+  # AI 提供商选择：zhipu / deepseek / qwen / moonshot / mimo / doubao
   provider: zhipu
 
-  # 智谱AI 配置（默认，免费）
+  # 智谱AI 配置
   zhipu:
-    api_key: "92974196eb5b44e1b9c7aa50ae36dc4d.jub26fsY7iutNT4t"  # 请填入你的智谱AI API Key
     base_url: "https://open.bigmodel.cn/api/paas/v4"
     model: "glm-4-flash"
     max_tokens: 1500
     temperature: 0.7
 
-  # DeepSeek 配置（付费，但价格极低）
+  # DeepSeek 配置
   deepseek:
-    api_key: "sk-82df4d8c34304e7b925139722172a09e"  # 请填入你的 DeepSeek API Key
     base_url: "https://api.deepseek.com"
     model: "deepseek-chat"
     max_tokens: 1500
@@ -26,7 +24,6 @@ llm:
 
   # 通义千问配置
   qwen:
-    api_key: ""  # 请填入你的通义千问 API Key
     base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
     model: "qwen-turbo"
     max_tokens: 1500
@@ -34,7 +31,6 @@ llm:
 
   # 月之暗面（Kimi）配置
   moonshot:
-    api_key: ""  # 请填入你的 Moonshot API Key
     base_url: "https://api.moonshot.cn/v1"
     model: "moonshot-v1-8k"
     max_tokens: 1500
@@ -42,7 +38,6 @@ llm:
 
   # 小米 MIMO 配置
   mimo:
-    api_key: "tp-ca7ulxg4k52btfmqqcofktb56rn8kvjz6rnbro2e1nj4pre1"  # 请填入你的小米 MIMO API Key
     base_url: "https://token-plan-cn.xiaomimimo.com/anthropic"
     model: "mimo-chat"
     max_tokens: 1500
@@ -50,7 +45,6 @@ llm:
 
   # 火山引擎 Doubao 配置
   doubao:
-    api_key: ""  # 请填入你的火山引擎 Doubao API Key
     base_url: "https://ark.cn-beijing.volces.com/api/v3"
     model: "doubao-seed"
     max_tokens: 1500
